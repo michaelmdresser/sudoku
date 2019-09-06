@@ -49,7 +49,7 @@
 (def squaresWithAllPossible
   (apply hash-map (interleave squares (repeat (* 9 9) (set digits)))))
 
-; TODO: add checking if we have the right number
+; TODO: add checking if we have the right number of values
 ; takes string of user input and turns it into a map
 ; from square ident to the value entered in the input
 (defn cleanGrid [rawInput]
@@ -96,27 +96,79 @@
 
 (defn getPeers [row col]
   (clojure.set/union (set (getRowPeers row col))
-         (set (getColPeers row col))
-         (set (getSquarePeers row col))))
+                     (set (getColPeers row col))
+                     (set (getSquarePeers row col))))
 
+; updates the board by removing the provided value from the possible digits
+; for the given position
 (defn removeValueFromPeer [currentBoard value peer]
   (assoc currentBoard peer (disj (get currentBoard peer) value)))
 
+; gets all positions from the provided collection that contain the provided
+; value in the current board state
+(defn positionsThatContain [value positions board]
+  (filter (fn [position] (contains? (get board position) value)) positions))
+
+; given a unit (3x3 square) on the board, finds any positions in that unit
+; that can only have one possible value
+;       1
+;        289       89      289
+;     356789     6789    36789
+; C  1236789     6789  2346789
+;
+; in this example, the bottom left square has to be one
+; provided with this situation, we will get something like
+; (... [["C" "1"] "1"] ...)
+; later improvement: filter out nil value so that the only values returned
+; are guaranteed mappings so that the caller does not have to do nil filtering
+(defn getPositionsWithGuaranteedValue [board unit]
+  (for [digit digits]
+    (let [positionsThatContain (positionsThatContain digit unit board)]
+      (when (= 1 (count positionsThatContain))
+        [(first positionsThatContain) digit]
+        ))))
+
+; this just takes a unit and performs assignment if it has positions that are
+; guaranteed (see other comments)
+(defn checkUnitForSinglePosition [board unit]
+  (let [positionsToGuaranteedValue (getPositionsWithGuaranteedValue board unit)]
+    (reduce (fn [board posToValue]
+              (if (nil? posToValue)
+                board
+                (sudokuApply (assoc board (first posToValue) (set (second posToValue)))
+                             posToValue)))
+            board
+            positionsToGuaranteedValue)))
+
+
+; checks the large squares for a number which has only one possible position
+(defn checkUnitsForSinglePosition [currentBoard]
+  (reduce checkUnitForSinglePosition currentBoard squareMembership))
+
+; remove value from the selected peer
+; if the peer has 0 possible value after removal, something wrong has happened
+; if the peer has 1 possible value after removal, that is the guaranteed value
+; and must be propagated
+(defn removeAndApply [board value peer]
+  (let [newBoard (removeValueFromPeer board value peer)]
+    (cond
+      (= (count (get newBoard peer)) 0)
+        (throw (Exception. "removing the value caused the peer to have no possible"))
+      (= (count (get newBoard peer)) 1)
+        (sudokuApply newBoard [peer (first (get newBoard peer))])
+      :else newBoard)))
+
+; eliminate removes the value from the given peer and then performs an
+; additional check after the removal: if there are any units (3x3 squares)
+; that have only one possible position for a digit, set that position to
+; be that digit and then propagate
 (defn eliminate [value currentBoard peer]
-  ;(prn "eliminating: " value " from peer: " peer)
-  ;(prn currentBoard)
   (if (contains? (get currentBoard peer) value)
-    (let [newBoard (removeValueFromPeer currentBoard value peer)]
-      (cond
-        (= (count (get newBoard peer)) 0) (throw (Exception. "why"))
-        (= (count (get newBoard peer)) 1) (sudokuApply newBoard [peer (first (get newBoard peer))])
-        :else (reduce (fn [board square] 
-                        (if (= (count (get board square)) 1)
-                          (sudokuApply board [square (first (get board square))])
-                          board))
-                      newBoard squares)))
-    (do ;(println "peer " peer " does not contain " value)
-        currentBoard)))
+    (let [updatedBoard (removeAndApply currentBoard value peer)]
+      ;updatedBoard
+      (checkUnitsForSinglePosition updatedBoard)
+      )
+    currentBoard))
 
 (defn sudokuApply [currentBoard newAssoc]
   (let [square (first newAssoc)
@@ -124,17 +176,15 @@
         row (first square)
         col (second square)
         peers (getPeers row col)]
-    ;(prn "square: " square " value: " value)
-    ;(prn "current board: " currentBoard)
     (if (contains? (set digits) value) ; ignore the . and 0 values
-      (do ;(prn "current board: " currentBoard)
-          (reduce (partial eliminate value) currentBoard peers))
+      (reduce (partial eliminate value) 
+              currentBoard
+              peers)
       currentBoard)))
 
 (defn parseGrid [rawInput]
   (let [cleanedGrid (cleanGrid rawInput)
         initialPossible squaresWithAllPossible]
-    ;(prn "cleaned" cleanedGrid)
    (reduce sudokuApply initialPossible cleanedGrid)))
 
 (defn displayRow [board row]
@@ -142,8 +192,11 @@
     (when (or (= col "4")
               (= col "7"))
       (print " | "))
-    (print (first (get board [row col]))))
-  )
+      (print (format "%9s" (apply str (sort (get board [row col])))))
+
+    ;(print " ")
+    ;(print (first (get board [row col]))))
+  ))
   ;(map (fn [col] (print (first (get board [row col])))) cols))
 
 (defn display [board]
