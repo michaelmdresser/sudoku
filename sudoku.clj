@@ -46,6 +46,9 @@
         col cols]
     [row col]))
 
+(def squaresWithAllPossible
+  (apply hash-map (interleave squares (repeat (* 9 9) (set digits)))))
+
 ; TODO: add checking if we have the right number
 ; takes string of user input and turns it into a map
 ; from square ident to the value entered in the input
@@ -54,9 +57,6 @@
   (zipmap squares (filter (fn [c]
             (or (contains? (set digits) c)
                 (contains? #{"0" "."} c))) stringified))))
-
-(def squaresWithAllPossible
-  (apply hash-map (interleave squares (repeat (* 9 9) (set digits)))))
 
 (defn getRowMembers [row]
   (set (map (fn [col] [row col]) cols)))
