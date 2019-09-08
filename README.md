@@ -26,6 +26,7 @@ I just run this in `lein repl` and then load the file and run `(display (search 
 * Variable naming in a few places
 * Comments that are more explicit about types
 * I wanted to write this in as functional of a style as I possibly could (I think I got reasonably close) but I'm sure it could be more idiomatic if I knew Clojure better.
+* Search could become nondeterministic if I had it pick from the possible value for an unsolved square randomly, which may have better average case behavior.
 
 ### Takeaways
 * I realize that I like forcing types on arguments to functions. I was bit several types by thinking a set contained values of a certain type that were actually of a different type.
