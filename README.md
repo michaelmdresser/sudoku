@@ -1,6 +1,8 @@
 # sudoku
 sudoku solver
 
+Based on [Peter Norvig's post](https://norvig.com/sudoku.html) on the subject. I had to mangle it a fair bit for Clojure, but I stole all of the core concepts from him.
+
 ### But why?
 It seemed like an interesting problem and I wanted to learn some Clojure.
 
