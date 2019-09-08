@@ -32,6 +32,28 @@
 ;    7     |    8     |   9     
 ;          |          |         
 
+(declare sudokuApply)
+
+(defn displayRow [board row]
+  (doseq [col cols]
+    (when (or (= col "4")
+              (= col "7"))
+      (print " | "))
+      (print (format "%9s" (apply str (sort (get board [row col])))))
+
+    ;(print " ")
+    ;(print (first (get board [row col]))))
+  ))
+  ;(map (fn [col] (print (first (get board [row col])))) cols))
+
+(defn display [board]
+  (doseq [row rows]
+    (when (or (= row "D")
+            (= row "G"))
+      (println "---------------"))
+    (displayRow board row)
+    (newline)))
+
 
 
 (def digits ["1" "2" "3" "4" "5" "6" "7" "8" "9"])
@@ -119,24 +141,21 @@
 ; in this example, the bottom left square has to be one
 ; provided with this situation, we will get something like
 ; (... [["C" "1"] "1"] ...)
-; later improvement: filter out nil value so that the only values returned
-; are guaranteed mappings so that the caller does not have to do nil filtering
 (defn getPositionsWithGuaranteedValue [board unit]
+  (filter some?
   (for [digit digits]
     (let [positionsThatContain (positionsThatContain digit unit board)]
-      (when (= 1 (count positionsThatContain))
-        [(first positionsThatContain) digit]
-        ))))
+      (cond (= 1 (count positionsThatContain)) [(first positionsThatContain) digit]
+            (= 0 (count positionsThatContain)) (throw (Exception. "a unit has no positions for the digit"))
+        )))))
 
 ; this just takes a unit and performs assignment if it has positions that are
 ; guaranteed (see other comments)
 (defn checkUnitForSinglePosition [board unit]
   (let [positionsToGuaranteedValue (getPositionsWithGuaranteedValue board unit)]
     (reduce (fn [board posToValue]
-              (if (nil? posToValue)
-                board
-                (sudokuApply (assoc board (first posToValue) (set (second posToValue)))
-                             posToValue)))
+                (sudokuApply (assoc board (first posToValue) #{(second posToValue)})
+                             posToValue))
             board
             positionsToGuaranteedValue)))
 
@@ -187,24 +206,52 @@
         initialPossible squaresWithAllPossible]
    (reduce sudokuApply initialPossible cleanedGrid)))
 
-(defn displayRow [board row]
-  (doseq [col cols]
-    (when (or (= col "4")
-              (= col "7"))
-      (print " | "))
-      (print (format "%9s" (apply str (sort (get board [row col])))))
+(defn unfilledWithMinPossible [board]
+  (first
+  (reduce (fn [minLocationAndCount nextAssoc]
+            (let [nextLength (count (second nextAssoc))
+                  nextPosition (first nextAssoc)]
+              ;(prn nextAssoc nextPosition nextLength)
+              (if (and (> nextLength 1)
+                       (< nextLength (second minLocationAndCount)))
+                [nextPosition nextLength]
+                minLocationAndCount)))
+          [nil 11] 
+          board))
+)
 
-    ;(print " ")
-    ;(print (first (get board [row col]))))
-  ))
-  ;(map (fn [col] (print (first (get board [row col])))) cols))
+(defn isBoardSolved [board]
+  (reduce
+    (fn [current mapping]
+      (and current
+           (= (count (second mapping)) 1)))
+    true
+    board))
 
-(defn display [board]
-  (doseq [row rows]
-    (when (or (= row "D")
-            (= row "G"))
-      (println "---------------"))
-    (displayRow board row)
-    (newline)))
+
+(defn search [board]
+  ; if all positions are solved, return the board
+  ;(prn)
+  ;(prn)
+  ;(display board)
+  (if (isBoardSolved board)
+    (do (prn "board solved") board)
+    (let [unfilledToEliminate (unfilledWithMinPossible board)]
+      (do ;(prn "unf: " unfilledToEliminate)
+      (reduce (fn [latestBoard potentialUnfilled]
+                ;(prn potentialUnfilled)
+                (if (isBoardSolved latestBoard)
+                  latestBoard ; we already found a solution, don't bother
+                  (try 
+                    (let [newBoard
+                          (sudokuApply
+                            (assoc board unfilledToEliminate #{potentialUnfilled})
+                            [unfilledToEliminate potentialUnfilled])]
+                      (search newBoard))
+                    (catch Exception e (do ;(prn "failed" (.getMessage e))
+                                           latestBoard)))))
+              board
+              (seq (get board unfilledToEliminate)))))))
+
 
 ; (display (parseGrid trivialBoard))
