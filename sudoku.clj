@@ -184,7 +184,6 @@
 (defn eliminate [value currentBoard peer]
   (if (contains? (get currentBoard peer) value)
     (let [updatedBoard (removeAndApply currentBoard value peer)]
-      ;updatedBoard
       (checkUnitsForSinglePosition updatedBoard)
       )
     currentBoard))
@@ -211,7 +210,6 @@
   (reduce (fn [minLocationAndCount nextAssoc]
             (let [nextLength (count (second nextAssoc))
                   nextPosition (first nextAssoc)]
-              ;(prn nextAssoc nextPosition nextLength)
               (if (and (> nextLength 1)
                        (< nextLength (second minLocationAndCount)))
                 [nextPosition nextLength]
@@ -231,13 +229,9 @@
 
 (defn search [board]
   ; if all positions are solved, return the board
-  ;(prn)
-  ;(prn)
-  ;(display board)
   (if (isBoardSolved board)
     (do (prn "board solved") board)
     (let [unfilledToEliminate (unfilledWithMinPossible board)]
-      (do ;(prn "unf: " unfilledToEliminate)
       (reduce (fn [latestBoard potentialUnfilled]
                 ;(prn potentialUnfilled)
                 (if (isBoardSolved latestBoard)
@@ -248,10 +242,9 @@
                             (assoc board unfilledToEliminate #{potentialUnfilled})
                             [unfilledToEliminate potentialUnfilled])]
                       (search newBoard))
-                    (catch Exception e (do ;(prn "failed" (.getMessage e))
-                                           latestBoard)))))
+                    (catch Exception e latestBoard))))
               board
-              (seq (get board unfilledToEliminate)))))))
+              (seq (get board unfilledToEliminate))))))
 
 
 ; (display (parseGrid trivialBoard))
