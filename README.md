@@ -19,8 +19,8 @@ I just run this in `lein repl` and then load the file and run `(display (search 
 
 ### Things that could be better
 * Efficiency
-		* I think I waste time not exiting early in certain situations.
-		* I am really unfamiliar with the cost of the sheer number of function calls I am making.
+	* I think I waste time not exiting early in certain situations.
+	* I am really unfamiliar with the cost of the sheer number of function calls I am making.
 * Testing
 * Code organization
 * Variable naming in a few places
